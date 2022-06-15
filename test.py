@@ -1,9 +1,9 @@
+from cubic_spline import Spline2D
+from grid_based_sweep import *
+
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
-
-from env import Env
 
 class LeaderUAV:
     def __init__(self, pos=[0,0,0]):
@@ -14,7 +14,7 @@ class LeaderUAV:
 
         # Control parameters
         self.am = 5.0
-        self.bm = 1.0
+        self.bm = 5.0
         self.ao = 2.0
         self.bo = 3.0
 
@@ -26,7 +26,7 @@ class LeaderUAV:
         fm2g = self.am               # Control parameter of vm2g
         if dm <= self.bm:
             fm2g = self.am*dm/self.bm
-        return 2.2*fm2g*vm2g
+        return fm2g*vm2g
 
     def avoid_obstacle(self, obs):
         v = np.zeros(np.size(self.pos))
@@ -47,7 +47,7 @@ class LeaderUAV:
     def control_signal(self, ref, obs):
         v1 = self.move_to_goal(ref)
         v2 = self.avoid_obstacle(obs)
-        print(v1+v2)
+
         return v1 + v2
     
     def update_position(self, vel, dt=0.1):
@@ -69,15 +69,15 @@ class FollowerUAV:
 
         # Control parameters
         self.am = 5.0
-        self.bm = 1.0
-        self.ao = 1.0
-        self.bo = 1.0
+        self.bm = 5.0
+        self.ao = 3.0
+        self.bo = 4.0
 
     def keep_formation(self, ref):
-        xr = np.cos(self.leader.heading)*self.delta[0] - np.sin(self.leader.heading)*self.delta[1] + ref[0]
-        yr = np.sin(self.leader.heading)*self.delta[0] + np.cos(self.leader.heading)*self.delta[1] + ref[1]
-        # xr = self.delta[0] + ref[0]
-        # yr = self.delta[1] + ref[1]
+        # xr = np.cos(self.leader.heading)*self.delta[0] - np.sin(self.leader.heading)*self.delta[1] + ref[0]
+        # yr = np.sin(self.leader.heading)*self.delta[0] + np.cos(self.leader.heading)*self.delta[1] + ref[1]
+        xr = self.delta[0] + ref[0]
+        yr = self.delta[1] + ref[1]
         zr = ref[2]
         pr = np.array([xr, yr, zr])
         
@@ -87,7 +87,7 @@ class FollowerUAV:
         fkf = self.am              # Control parameter of vm2g
         if dk <= self.bm:
             fkf = self.am*dk/self.bm
-        return 2*fkf*vkf
+        return fkf*vkf
 
     def avoid_obstacle(self, obs):
         v = np.zeros(np.size(self.pos))
@@ -114,79 +114,32 @@ class FollowerUAV:
         self.heading = np.arctan2(vel[1], vel[0])
         self.path.append(self.pos)
 
-def plot_obstacles(ox, oy, oz, r):
-    z = np.linspace(0, oz, 50)
-    theta = np.linspace(0, 2*np.pi, 50)
-    theta_grid, z_grid=np.meshgrid(theta, z)
-    x_grid = r*np.cos(theta_grid) + ox
-    y_grid = r*np.sin(theta_grid) + oy
-    return x_grid,y_grid,z_grid
-
 if __name__ == "__main__":
-    dt = 0.05  # time step
+    obs = np.array([[5,5,1.5]])
+    goal = np.array([10,10,5])
 
-    # Map and reference path generation
-    ox = [0.0, 50.0, 50.0, 0.0, 0.0]
-    oy = [0.0, 0.0, 70.0, 60.0, 0.0]
-    resolution = 5
-    map = Env(ox, oy, resolution)
+    leader = LeaderUAV()
+    follower = FollowerUAV(pos=[1,0,0], leader=leader, delta=[-1,-1])    
 
-    # Formation processing
-    leader = LeaderUAV(pos=[50,0,6])
-    follower1 = FollowerUAV(pos=[40,0,6],leader=leader, delta=[-2,-2])
-    follower2 = FollowerUAV(pos=[42,0,6],leader=leader, delta=[-2, 2])
-    for i in range(len(map.traj[0])):
-        ref = map.traj[:,i]
-        # Check if the traj is colision
-        is_colision = False
-        for i in range(len(map.obs)):
-            do = math.sqrt((ref[0]-map.obs[i,0])**2 + (ref[1]-map.obs[i,1])**2)
-            bias = 1
-            if do <= map.obs[i,2] + bias:
-                is_colision = True
-                break
-        if is_colision:
-            continue
-
-        # UAV processing
-        lvel = leader.control_signal(ref, map.obs)
-        f1vel = follower1.control_signal(ref, map.obs)
-        f2vel = follower2.control_signal(ref, map.obs)
-
-        # UAV update
-        leader.update_position(lvel)
-        follower1.update_position(f1vel)
-        follower2.update_position(f2vel)
-
-
-    
-    # Plotting
-    plt.figure()
-    ax = plt.axes(projection ='3d')
-    ax.plot(map.ox, map.oy, np.ones(len(map.ox))*map.altitude, '-xk', label='range')
-    ax.plot(map.traj[0,:], map.traj[1,:], map.traj[2,:], '-b', label='reference')
-
-    # plot obstacle
-    for i in range(len(map.obs)):
-        Xc, Yc, Zc = plot_obstacles(map.obs[i,0], map.obs[i,1], 1.2*map.altitude, map.obs[i,2])
-        ax.plot_surface(Xc, Yc, Zc, alpha=0.5)
-
-    leader.path = np.array(leader.path)
-    follower1.path = np.array(follower1.path)
-    follower2.path = np.array(follower2.path)
-    # follower2.path = np.array(follower2.path)
-    ax.plot(leader.path[:,0], leader.path[:,1], leader.path[:,2], '--r', label='leader UAV')
-    ax.plot(follower1.path[:,0], follower1.path[:,1], follower1.path[:,2], '--c', label='follower 1 UAV')
-    ax.plot(follower2.path[:,0], follower2.path[:,1], follower2.path[:,2], '--g', label='follower 2 UAV')
+    dt = 0.01
+    sim_time = 10
+    iter = 0
+    while sim_time-iter*dt > 0:
+        lvel = leader.control_signal(goal, obs)
+        fvel = follower.control_signal(goal, obs)
         
-    ax.plot(map.traj[0,0], map.traj[1,0], map.traj[2,0], 'ks', label='start')    # start
-    ax.plot(map.traj[0,-1], map.traj[1,-1], map.traj[2,-1], 'ko', label='end')    # end
-    
-    ax.set_title("Forest rangers")
-    ax.grid(True)
-    ax.set_xlabel('x [m]')
-    ax.set_ylabel('y [m]')
-    ax.set_zlabel('z [m]')
-    ax.legend()
+        leader.update_position(lvel)
+        follower.update_position(fvel)
+        iter += 1
+
+    path = np.array(leader.path)
+    fpath = np.array(follower.path)
+    plt.figure()
+    ax = plt.axes()
+    sp = np.arange(0,2*math.pi+math.pi/6,math.pi/6)
+    for i in range(len(obs)):
+        ax.plot(obs[i,0]+obs[i,2]*np.cos(sp), obs[i,1]+obs[i,2]*np.sin(sp), '-k')
+    ax.plot(path[:,0], path[:,1], '-b', label='leader')
+    ax.plot(fpath[:,0], fpath[:,1], '-r', label='follower')
+    ax.axis('equal')
     plt.show()
-    
