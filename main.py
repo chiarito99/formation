@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
-
+from Plotting import Plotting
 from env import Env
 
 class LeaderUAV:
@@ -33,12 +33,12 @@ class LeaderUAV:
         for i in range(len(obs)):
             do = math.sqrt((obs[i,0]-self.pos[0])**2 + (obs[i,1]-self.pos[1])**2) - obs[i,2]
 
-            vao = (obs[i,:2]-self.pos[:2])/do          # Velocity avoiding obstacle
+            vao = (obs[i,:2]-self.pos[:2])/do +[0,2]         # Velocity avoiding obstacle
             sig = np.sign(math.sin(math.atan2(vao[1]*math.cos(self.heading)-vao[0]*math.sin(self.heading),
                                              vao[0]*math.cos(self.heading)+vao[1]*math.sin(self.heading))))
             vao = np.array([vao[1]*sig, vao[0], 0])
             fao = 0
-            if do <= self.bo:
+            if do <= self.bo + 0.1:
                 fao = self.ao*(1-do/self.bo)
             v = v + fao*vao
         return v
@@ -47,7 +47,7 @@ class LeaderUAV:
     def control_signal(self, ref, obs):
         v1 = self.move_to_goal(ref)
         v2 = self.avoid_obstacle(obs)
-        print(v1+v2)
+        # print(v1+v2)
         return v1 + v2
     
     def update_position(self, vel, dt=0.1):
@@ -70,8 +70,8 @@ class FollowerUAV:
         # Control parameters
         self.am = 5.0
         self.bm = 1.0
-        self.ao = 1.0
-        self.bo = 1.0
+        self.ao = 2.0
+        self.bo = 3.0
 
     def keep_formation(self, ref):
         xr = np.cos(self.leader.heading)*self.delta[0] - np.sin(self.leader.heading)*self.delta[1] + ref[0]
@@ -94,13 +94,13 @@ class FollowerUAV:
         for i in range(len(obs)):
             do = math.sqrt((obs[i,0]-self.pos[0])**2 + (obs[i,1]-self.pos[1])**2) - obs[i,2]
 
-            vao = (obs[i,:2]-self.pos[:2])/do          # Velocity avoiding obstacle
+            vao = (obs[i,:2]-self.pos[:2])/do + [0,2]          # Velocity avoiding obstacle
             sig = np.sign(math.sin(math.atan2(vao[1]*math.cos(self.heading)-vao[0]*math.sin(self.heading),
-                                             vao[0]*math.cos(self.heading)+vao[1]*math.sin(self.heading))))
+                                              vao[0]*math.cos(self.heading)+vao[1]*math.sin(self.heading))))
             vao = np.array([vao[1]*sig, vao[0], 0])
             fao = 0
             if do <= self.bo:
-                fao = self.ao*(1-do/self.bo)
+                fao = self.ao*(1 - do/self.bo)
             v = v + fao*vao
         return v
 
@@ -111,7 +111,7 @@ class FollowerUAV:
     
     def update_position(self, vel, dt=0.1):
         self.pos = self.pos + vel*dt
-        self.heading = np.arctan2(vel[1], vel[0])
+        self.heading = (np.arctan2(vel[1], vel[0]) + np.pi) %(2*np.pi)-np.pi
         self.path.append(self.pos)
 
 def plot_obstacles(ox, oy, oz, r):
@@ -128,20 +128,26 @@ if __name__ == "__main__":
     # Map and reference path generation
     ox = [0.0, 50.0, 50.0, 0.0, 0.0]
     oy = [0.0, 0.0, 70.0, 60.0, 0.0]
-    resolution = 5
+    resolution = 6
     map = Env(ox, oy, resolution)
 
     # Formation processing
-    leader = LeaderUAV(pos=[50,0,6])
-    follower1 = FollowerUAV(pos=[40,0,6],leader=leader, delta=[-2,-2])
-    follower2 = FollowerUAV(pos=[42,0,6],leader=leader, delta=[-2, 2])
+    leader = LeaderUAV(pos=[50,0,0])
+    follower1 = FollowerUAV(pos=[40,0,0],leader=leader, delta=[-2,-2])
+    follower2 = FollowerUAV(pos=[42,0,0],leader=leader, delta=[-2, 2])
+
+    x_traj, y_traj = [], []
     for i in range(len(map.traj[0])):
         ref = map.traj[:,i]
+        x_traj.append(ref[0])
+        # print(x_traj)
+        y_traj.append(ref[1])
+        # print()
         # Check if the traj is colision
         is_colision = False
         for i in range(len(map.obs)):
             do = math.sqrt((ref[0]-map.obs[i,0])**2 + (ref[1]-map.obs[i,1])**2)
-            bias = 1
+            bias = 2
             if do <= map.obs[i,2] + bias:
                 is_colision = True
                 break
@@ -158,6 +164,9 @@ if __name__ == "__main__":
         follower1.update_position(f1vel)
         follower2.update_position(f2vel)
 
+    print(leader.path)
+    plot= Plotting("formation")
+    plot.plot_animation(leader.path,follower1.path,follower2.path)
 
     
     # Plotting

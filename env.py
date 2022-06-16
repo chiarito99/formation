@@ -10,7 +10,7 @@ class Env:
         self.resolution = resolution
         px, py = planning(self.ox, self.oy, self.resolution)
 
-        ds = 1.0    # [m] distance of each intepolated points
+        ds = 0.5    # [m] distance of each intepolated points
         sp = Spline2D(px, py)
         s = np.arange(0, sp.s[-1], ds)
 
@@ -29,8 +29,9 @@ class Env:
         self.traj = np.array([rx, ry, rz])
 
         # Obstacle
-        self.obs = np.array([[50,50,2],
-                             [30,60,2]])
+        self.obs = np.array([[20,30,2],
+                             [30,40,2],
+                             [10,20,2]])
 
 # if __name__ == "__main__":
     # ox = [0.0, 50.0, 50.0, 0.0, 0.0]
