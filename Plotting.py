@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Plotting:
-    def __init__(self, name, xlim=[0,60], ylim=[0,60], is_grid=True):
+    def __init__(self, name, xlim=[0,80], ylim=[0,80], is_grid=True):
         self.name = name
         self.xlim = xlim
         self.ylim = ylim
@@ -36,13 +36,13 @@ class Plotting:
             # plt.plot(ref1[:i,0], ref1[:i,1], "-b")
             # plt.plot(ref2[:i,0], ref2[:i,1], "-b")
 
-            plt.plot(path1[:i,0], path1[:i,1], "-g", label="UAV 1")
+            plt.plot(path1[:i,0], path1[:i,1], "-g", label="Leader")
             self.draw_circle(path1[i,:2], radius, 'g')
 
-            plt.plot(path2[:i,0], path2[:i,1], "-r", label="UAV 2")
+            plt.plot(path2[:i,0], path2[:i,1], "-r", label="UAV 1")
             self.draw_circle(path2[i,:2], radius, 'r')
 
-            plt.plot(path3[:i,0], path3[:i,1], "-b", label="UAV 3")
+            plt.plot(path3[:i,0], path3[:i,1], "-b", label="UAV 2")
             self.draw_circle(path3[i,:2], radius, 'b')
 
             

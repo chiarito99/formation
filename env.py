@@ -33,20 +33,20 @@ class Env:
                              [30,40,2],
                              [10,20,2]])
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     # ox = [0.0, 50.0, 50.0, 0.0, 0.0]
     # oy = [0.0, 0.0, 60.0, 60.0, 0.0]
     # resolution = 5
-    # ox = [200.0, 800.0, 800.0, 200.0, 200.0]
-    # oy = [200.0, 200.0, 700.0, 700.0, 200.0]
-    # resolution = 80
-    # env = Env(ox, oy, resolution)
+    ox = [200.0, 800.0, 800.0, 200.0, 200.0]
+    oy = [200.0, 200.0, 700.0, 700.0, 200.0]
+    resolution = 30
+    env = Env(ox, oy, resolution)
 
-    # plt.figure()
-    # plt.plot(env.ox, env.oy, '-xk', label='range')
-    # plt.plot(env.traj[0,:], env.traj[1,:], '-b', label='reference')
-    # plt.axis('equal')
-    # plt.show()
+    plt.figure()
+    plt.plot(env.ox, env.oy, '-xk', label='range')
+    plt.plot(env.traj[0,:], env.traj[1,:], '-b', label='reference')
+    plt.axis('equal')
+    plt.show()
     #
     # import scipy.io
     # scipy.io.savemat('ref.mat', dict(lm=np.array([ox, oy]),path=env.traj))

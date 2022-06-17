@@ -30,12 +30,12 @@ class UAV:
             fao = 0
             if do <= self.bo:
                 fao = self.ao*(1-do/self.bo)
-            v = v + fao*vao
+            v = v + fao*vao + [1,1,1]
         return v
 
     def control_signal(self, obs):
         v2 = self.avoid_obstacle(obs)
-        return  v2 + np.array([1,1,1])
+        return  v2
     
     def update_position(self, vel, dt=0.02):
         self.pos = self.pos + vel*dt
