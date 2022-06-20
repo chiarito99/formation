@@ -43,31 +43,6 @@ class LeaderUAV:
     #         v = v + fao*vao
     #     return v
 
-    # def avoid_obstacle(self, obs):
-    #     v = np.zeros(np.size(self.pos))
-    #     for i in range(len(obs)):
-    #         do = math.sqrt((obs[i,0]-self.pos[0])**2 + (obs[i,1]-self.pos[1])**2) - obs[i,2]
-    #         vao = (obs[i,:2]-self.pos[:2])/do   
-    #       # Velocity avoiding obstacle
-    #         # sig1 = -np.sign(vao[0]*math.sin(self.heading)-vao[1]*math.cos(self.heading))
-    #         # sig2 = -np.sign(vao[0]*math.cos(self.heading)-vao[1]*math.sin(self.heading))
-
-    #     #     if self.heading > 0:     # Velocity avoiding obstacle
-    #     #         sig1 = -np.sign(vao[0]*math.sin(self.heading)-vao[1]*math.cos(self.heading))
-    #     #         sig2 = -np.sign(vao[0]*math.cos(self.heading)-vao[1]*math.sin(self.heading))
-    #     #     else:
-    #     #         sig1 = -np.sign(vao[0]*math.sin(self.heading)-vao[1]*math.cos(self.heading))
-    #     #         sig2 = np.sign(vao[0]*math.cos(self.heading)-vao[1]*math.sin(self.heading))
-    #     #     if sig2 == 0:
-    #     #         sig2 = 1
-    #     #     if sig1 == 0:
-    #     #         sig1 =1
-    #     #     vao = np.array([vao[1]*sig1, vao[0]*sig2, 0])
-    #     #     fao = 0
-    #     #     if do <= self.bo + 0.2:
-    #     #         fao = self.ao*(1-do/self.bo)
-    #     #     v = v + fao*vao
-    #     # return v
     def avoid_obstacle(self,obs):
         v = np.zeros(np.size(self.pos))
         for i in range(len(obs)):
@@ -137,6 +112,22 @@ class FollowerUAV:
         self.ao = 3.0
         self.bo = 4.0
 
+
+    def avoid_Robot(self,rbt_pos):
+        v = np.zeros(np.size(self.pos))
+        for i in range(len(rbt_pos)):
+            do = math.sqrt((rbt_pos[i,0]-self.pos[0])**2 + (rbt_pos[i,1]-self.pos[1])**2)
+            e=0
+            if do !=0 and do<0.1:
+                e = -(rbt_pos[i,:2]-self.pos[:2])/do
+                vao = np.array([e[0],e[1],0])
+                v=v+vao
+            else:
+                v=v
+        return v
+
+
+
     def keep_formation(self, ref):
         xr = np.cos(self.leader.heading)*self.delta[0] - np.sin(self.leader.heading)*self.delta[1] + ref[0]
         yr = np.sin(self.leader.heading)*self.delta[0] + np.cos(self.leader.heading)*self.delta[1] + ref[1]
@@ -174,7 +165,6 @@ class FollowerUAV:
         v = np.zeros(np.size(self.pos))
         for i in range(len(obs)):
             do = math.sqrt((obs[i,0]-self.pos[0])**2 + (obs[i,1]-self.pos[1])**2) - obs[i,2]
-
             vao = (obs[i,:2]-self.pos[:2])/do          # Velocity avoiding obstacle
             if self.heading > 0 and self.heading <np.pi/2:     # Velocity avoiding obstacle
                 sig1 = -np.sign(vao[0]*math.sin(self.heading)-vao[1]*math.cos(self.heading))
@@ -203,15 +193,18 @@ class FollowerUAV:
         return v
     
 
-    def control_signal(self, ref, obs):
+    def control_signal(self, ref, obs,rbt_pos):
         v1 = self.keep_formation(ref)
         v2 = self.avoid_obstacle(obs)
-        return v1 + v2
+        v3 = self.avoid_Robot(rbt_pos)
+        return v1 + v2+ v3
     
     def update_position(self, vel, dt=0.1):
         self.pos = self.pos + vel*dt
         self.heading = (np.arctan2(vel[1], vel[0]) + np.pi) %(2*np.pi)-np.pi
         self.path.append(self.pos)
+
+
 
 def plot_obstacles(ox, oy, oz, r):
     z = np.linspace(0, oz, 50)
@@ -252,17 +245,16 @@ if __name__ == "__main__":
                 break
         if is_colision:
             continue
-
+        rbt_pos = np.array([follower1.pos,follower2.pos])
         # UAV processing
         lvel = leader.control_signal(ref, map.obs)
-        f1vel = follower1.control_signal(ref, map.obs)
-        f2vel = follower2.control_signal(ref, map.obs)
+        f1vel = follower1.control_signal(ref, map.obs,rbt_pos)
+        f2vel = follower2.control_signal(ref, map.obs,rbt_pos)
 
         # UAV update
         leader.update_position(lvel)
         follower1.update_position(f1vel)
         follower2.update_position(f2vel)
-        print(follower1.heading)
 
     # print(leader.path)
     plot= Plotting("formation")
